@@ -22,128 +22,9 @@ def read_int(prompt, minv=4):
             print("Entrada Inválida.")
 
 
-
-
-
-def cant_Q(tablero):
-    cant=0
-    posiciones = set()
-    atacados= set()
-    
-    for i in range(len(tablero)):
-        if  "Q" in tablero[i]:
-            cant+=1
-            posiciones.add((i,tablero.index("Q")))
-            atacados.add((i,tablero.index("Q")))
-    return cant,posiciones,atacados
-# ===================== BFS =====================
-def bfs(tablero,inicio):
-    rows = len(tablero)
-    cols = len(tablero[0])
-    reinas= set (inicio)
-    queue = deque()
-    queue.append((tablero, reinas))
-    atacados = set()
-
-    while queue:
-        tab, reinas_tab = queue.popleft()
-        #cantidad_q,posiciones_reinas, atacados= cant_Q(tab)
-                    
-        if reinas_tab == len(tab):
-            return True
-        
-        rows = len(tablero)
-        cols = len(tablero[0])
-        #r, f = inicio  # Fila y columna de la Reina
-        
-        
-
-
-        for n in range(rows):
-            barrido= 0
-            for c in range(cols):
-                # 1. Posición de la Reina
-                if (n,c) in reinas_tab:
-                    visitados.add((n,c))
-                # 2. Misma fila o misma columna
-                elif n == r or c == f:
-                    linea += "[-]"
-                    visitados.add((n,c))
-                # 3. Misma diagonal (La magia de las matemáticas)
-                elif abs(n - r) == abs(c - f):
-                    linea += "[-]"
-                    visitados.add((n,c))
-                # 4. Espacio vacío
-                else:
-                    linea += "[ ]"
-            print(linea)
-
-    return False, []
-
-from collections import deque
-
-def es_seguro(reinas_actuales, nueva_reina):
-    """
-    Comprueba si la nueva_reina es atacada por las reinas que ya están en el tablero.
-    """
-    r_nueva, c_nueva = nueva_reina
-    for r, c in reinas_actuales:
-        # Misma columna o misma diagonal
-        if c == c_nueva or abs(r - r_nueva) == abs(c - c_nueva):
-            return False
-    return True
-
-def resolver_n_reinas_bfs(n, pos_inicial=None):
-    queue = deque()
-    if pos_inicial:
-        # Si hay una reina fija, empezamos con ella
-        queue.append([pos_inicial])
-        filas_ocupadas = {pos_inicial[0]}
-    else:
-        # Si no hay fija, empezamos con un tablero vacío
-        queue.append([])
-        filas_ocupadas = set()
-
-    soluciones = []
-
-    while queue:
-        tablero_actual = queue.popleft()
-        
-        # Condición de victoria: si tenemos N reinas, es una solución
-        if len(tablero_actual) == n:
-            soluciones.append(tablero_actual)
-            continue # Buscamos más soluciones en la cola
-
-        # Determinamos qué fila toca llenar
-        # Buscamos la primera fila que no esté en el tablero_actual
-        filas_en_este_tablero = {r for r, c in tablero_actual}
-        fila_objetivo = 0
-        while fila_objetivo in filas_en_este_tablero:
-            fila_objetivo += 1
-            
-        # Intentamos colocar una reina en cada columna de la fila_objetivo
-        for col in range(n):
-            nueva_pos = (fila_objetivo, col)
-            if es_seguro(tablero_actual, nueva_pos):
-                # Importante: Creamos una copia del camino actual + la nueva reina
-                nuevo_tablero = tablero_actual + [nueva_pos]
-                queue.append(nuevo_tablero)
-
-    return filas_en_este_tablero
-
-# Ejemplo: Tablero de 4x4 con reina fija en (2,0)
-n = 4
-pos_fija = (2, 0)
-resultados = resolver_n_reinas_bfs(n, pos_fija)
-
-print(f"Soluciones encontradas: {len(resultados)}")
-for i, sol in enumerate(resultados):
-    print(f"Solución {i+1}: {sol}")
-
-
 def generar_tablero(rows,inicio=None):
 
-    tablero = [[0 for _ in range(rows)] for _ in range(rows)]
+    tablero = [["[ ]" for _ in range(rows)] for _ in range(rows)]
     if inicio:
         tablero[inicio[0]][inicio[1]]= " Q "
     return tablero
@@ -156,40 +37,135 @@ def imprimir_tablero(tablero):
     for r in range(rows):
         fila=""
         for c in range(cols):    
-            fila +=tablero[r][c]
+            fila += tablero[r][c]
             
         print(fila)
 
-
+def preguntar_posicion(prompt, rows):
+    while True:
+        try:
+            text = input(prompt + " (fila,col): ")
+            r, c = map(int, text.split(","))
+            # Se valida que la posición ingresada esté dentro de los límites del tablero
+            if 0 <= r < rows and 0 <= c < cols:
+                return(r, c)
+        except:
+            pass
+        print("Posicion invalida.")
 
 
 def bfs_mi(tablero):
     queue = deque()
-    queue.append(tablero)
+    queue.append((tablero,[tablero]))
 
     while queue:
-        tablero_actual = queue.popleft()
+        tablero_actual, path = queue.popleft()
+        # Una sola llamada para obtener todo
+        cant_actual, pos_actual= contar_reinas(tablero_actual)
 
-        if contar_r(tablero_actual)[1] == len(tablero_actual):
-            return True, tablero
-        
-        fila_inicio=0
-        for pos in contar_r(tablero_actual)[2]:
-            if fila_inicio==pos[0]:
-                fila_inicio+=1
+        if cant_actual == len(tablero_actual):
+            return True,path
 
-        for c in range(len(tablero_actual)):
-            fila_inicio+=1
-            nuevo = [fila[:] for fila in tablero_actual]
-            if es_seguro(contar_r(tablero_actual)[2],(fila_inicio,c)):
-                nuevo[fila_inicio][c] = " Q "
-                queue.append(nuevo)
-            imprimir_tablero(nuevo)    
+        # Buscar la siguiente fila
+        fila_objetivo = 0
+        filas_ocupadas = {p[0] for p in pos_actual}
+        while fila_objetivo in filas_ocupadas:
+            fila_objetivo += 1
+
+        if fila_objetivo < len(tablero_actual):
+            for c in range(len(tablero_actual)):
+                if es_seguro(pos_actual, (fila_objetivo, c)):
+                    nuevo = [fila[:] for fila in tablero_actual]
+                    nuevo[fila_objetivo][c] = " Q "
+                    
+                    # Verificamos victoria aquí para ahorrar memoria
+                    nuevo_camino = path + [nuevo]
+                    
+                    if contar_reinas(nuevo)[1] == len(nuevo):
+                        tab_fin = contar_reinas(nuevo)[0]
+                        print("¡SOLUCIÓN FINAL ENCONTRADA!")
+
+                        #imprimir_tablero(tab_fin)
+                        return True, nuevo_camino
+                    queue.append((nuevo, nuevo_camino))
+                  
+                    # ¡NO IMPRIMIR AQUÍ PARA N=10!
+                       
 
 
 
 
     return False, "no se encontro solucion"
+
+
+def dfs_mi(tablero_actual, camino):
+    #queue = deque()
+    #queue.append(tablero)
+
+
+   # tablero_actual = queue.pop()
+    # Una sola llamada para obtener todo
+    cant_actual, pos_actual= contar_reinas(tablero_actual)
+    camino.append(tablero_actual)
+
+    if cant_actual == len(tablero_actual):
+        print("¡SOLUCIÓN FINAL ENCONTRADA!")
+        #imprimir_tablero(tablero_actual)
+        return True, camino
+
+    # Buscar la siguiente fila
+    fila_objetivo = 0
+    filas_ocupadas = {p[0] for p in pos_actual}
+    while fila_objetivo in filas_ocupadas:
+        fila_objetivo += 1
+
+    #if fila_objetivo < len(tablero_actual):
+    for c in range(len(tablero_actual)):
+        if es_seguro(pos_actual, (fila_objetivo, c)):
+            nuevo = [fila[:] for fila in tablero_actual]
+            nuevo[fila_objetivo][c] = " Q "
+            exito, resultado_final = dfs_mi(nuevo, list(camino))
+            # Verificamos victoria aquí para ahorrar memoria
+            if exito:
+                return True, resultado_final
+
+    return False, []
+
+
+
+
+def ldfs_mi(tablero_actual, camino,limite):
+
+    cant_actual, pos_actual = contar_reinas(tablero_actual)
+    nuevo_camino = camino + [tablero_actual]
+
+    if cant_actual == len(tablero_actual):
+        print("¡SOLUCIÓN FINAL ENCONTRADA!")
+        #imprimir_tablero(tablero_actual)
+        return True, nuevo_camino
+    
+    if limite <= 0:
+       return False, []        
+       
+    # Buscar la siguiente fila
+    fila_objetivo = 0
+    filas_ocupadas = {p[0] for p in pos_actual}
+    while fila_objetivo in filas_ocupadas:
+        fila_objetivo += 1
+
+    
+    #if fila_objetivo < len(tablero_actual):
+    for c in range(len(tablero_actual)):
+        if es_seguro(pos_actual, (fila_objetivo, c)):
+            nuevo = [fila[:] for fila in tablero_actual]
+            nuevo[fila_objetivo][c] = " Q "
+            exito, resultado_final = ldfs_mi(nuevo, nuevo_camino,limite-1)
+            # Verificamos victoria aquí para ahorrar memoria
+            if exito:
+                return True, resultado_final
+
+    return False, []
+
 
 
 def es_seguro(reinas,new_reina):
@@ -201,42 +177,57 @@ def es_seguro(reinas,new_reina):
     return True            
 
 
-def contar_r(tablero):
-    cant=0
+def contar_reinas(tablero):
     posiciones = set()
-    atacados= set()
-    
+    cant = 0
     for i in range(len(tablero)):
-        if  " Q " in tablero[i]:
-            cant+=1
-            c=tablero[i].index(" Q ")
-            posiciones.add((i,c))
-            atacados.add((i,c))
-
-    for f in posiciones:
-
-        for n in range(len(tablero)):
-            barrido= 0
-            for c in range(len(tablero)):
-                if (n,c)== f:
-                    continue
-                elif (n == f[0] or c == f[1]) or (abs(n - f[0]) == abs(c - f[1])):
-                    atacados.add((n,c))
-                    tablero[n][c]="[-]"
-                else:
-                    tablero[n][c]="[ ]"
-    
-    return [tablero,cant,posiciones,atacados]
+        for j in range(len(tablero)):
+            if tablero[i][j] == " Q ":
+                cant += 1
+                posiciones.add((i, j))
+    return [cant, posiciones]
             
 
-# Ejemplo de uso con un tablero de 8x8
+
+
 
 def main():
-    print("--- Laberinto con BFS, DFS y LDFS ---")
-    rows = read_int("Ingrese el numero de filas: ", 4)
-    tablero = generar_tablero(rows,(0,0))
-    print(bfs_mi(tablero))
-    #success, path = bfs(tablero, inicio, meta, movimientos)
+    print("\n--- Solucionador de N-Reinas (BFS, DFS, LDFS) ---")
+    print("1 - BFS (Anchura)\n2 - DFS (Profundidad)\n3 - LDFS (Profundidad Limitada)")
+    model_option = read_int("Seleccione una opcion: ", 1)
+    rows = read_int("Ingrese el numero de reinas (N): ", 4)
     
+    print("\n¿Deseas fijar la posición de la primera reina?")
+    resp = read_int("1: SI | 2: NO  -> ", 1)
+    inicio = preguntar_posicion(f"Posición", rows) if resp == 1 else None
+
+    tablero_inicial = generar_tablero(rows, inicio)
+    success, path = False, []
+
+    print(f"\nEjecutando búsqueda... Por favor espere.")
+    start_time = time.time()
+
+    if model_option == 1:
+        success, path = bfs_mi(tablero_inicial)
+    elif model_option == 2:
+        success, path = dfs_mi(tablero_inicial, [])
+    elif model_option == 3:
+        limit = read_int(f"Ingrese el limite de profundidad (Sugerido: {rows}): ", 1)
+        success, path = ldfs_mi(tablero_inicial, [], limit)
+
+    end_time = time.time()
+
+    if success:
+        print(f"\n¡SOLUCIÓN ENCONTRADA en {end_time - start_time:.4f} segundos!")
+        print(f"Pasos recorridos: {len(path)}")
+        ver_pasos = read_int("¿Deseas ver la animación? (1: SI | 2: NO): ", 1)
+        if ver_pasos == 1:
+            for i, paso in enumerate(path):
+                print(f"\n--- Paso {i+1} ---")
+                imprimir_tablero(paso) # Corregido: imprimir el paso directamente
+                time.sleep(0.3)
+    else:
+        print("\nNo se encontró una solución.")
+
 if __name__ == "__main__":
-    main()    
+    main()
